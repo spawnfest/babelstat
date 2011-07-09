@@ -4,7 +4,7 @@
 
 %% API
 -export([start_link/0]).
--export([add_child/2]).
+-export([add_child/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,5 +22,5 @@ init(_Args) ->
     {ok, {{simple_one_for_one, 0, 1},
 	  [CalculationSupSpec]}}.
 
-add_child(SeriesToCalculate, MathNotion) ->
-    supervisor:start_child(?MODULE, [SeriesToCalculate, MathNotion]).
+add_child(Query, Filter, Callback) ->
+    supervisor:start_child(?MODULE, [Query, Filter, Callback]).

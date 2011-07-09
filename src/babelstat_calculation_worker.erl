@@ -32,25 +32,26 @@
 		 Filter::[{Key1::atom(), Val::binary()}] | [], ReportToPid::pid()) ->
 			{ok, Pid::pid()} | ignore | {error, Error::term()}.
 start_link(Query, Filter, Callback) ->
-    gen_fsm:start_link(?MODULE, [], [Query, Filter, Callback]).
+    gen_fsm:start_link(?MODULE, [Query, Filter, Callback], []).
 
 %%%===================================================================
 %%% gen_fsm callbacks
 %%%===================================================================
 init([SearchQuery, Filter, Callback]) ->
+    io:format("up"),
     case babelstat_database:query_database(SearchQuery) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
 	    case {Result#babelstat.constant =:= true, Result#babelstat.calculation =:= true} of
 		{true, _} ->
 		    % It's a constant
-		    Series = babelstat_series:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
+		    Series = babelstat_utils:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
 								      Result#babelstat.scale, Result#babelstat.metric),
 		    {stop, done, #state{ result = Series,
 					 callback = Callback}};
 		{_, true} ->
 		    % It's a calculation
-		    {Queries, Algebra} = a:parse_calculation(Calc),
+		    {Queries, Algebra} = babelstat_utils:parse_calculation(Calc),
 		    Self = self(),
 		    Workers = length(lists:map(fun(Serie) ->
 						{ok, Pid} = babelstat_calculation_worker:start_link(Serie, Filter,
@@ -86,7 +87,7 @@ waiting_for_workers({error, Error},  State) ->
 waiting_for_workers({done, NewResults}, #state{result = Results,
 					       workers = 1,
 					       algebra = Algebra } = State) ->
-    CalculatedResults = babelstat_calculator:calculate(babelstat_utils:replace_tokens_with_values(Results++[NewResults], Algebra)),
+    CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Results++[NewResults], Algebra)),
     {stop, done, State#state{ result = CalculatedResults,
 			      workers = 0 }};
 waiting_for_workers({done, NewResult}, #state{ result = Result, 
