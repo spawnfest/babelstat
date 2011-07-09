@@ -19,8 +19,8 @@
 %%@doc Transposes a list of lists.
 -spec transpose([list()]) -> [list()].
 transpose([]) -> [];
-transpose([Single,[]]) -> Single;
-transpose([H|_]=L) -> [lists:map(F, L) || F <- [fun(A) -> lists:nth(N, A) end || N <- lists:seq(1, length(H))]].
+transpose([Single,[]]) -> Single#babelstat.value;
+transpose([H|_]=L) -> [lists:map(F, L) || F <- [fun(A) -> lists:nth(N, A#babelstat.value) end || N <- lists:seq(1, length(H))]].
 
 %%@doc Aggregates documents to a common timeframe (Needs optimizing)
 -spec date_adjust(list(), list(), atom(), list(), string(), string()) -> list().

@@ -25,9 +25,10 @@ get_docs(Metric,Scale,Frequency) ->
 	      end,lists:seq(1,20)).
 
 send_to_couchdb() ->    
-    _Docs = get_docs(),
-    
-    ok.
+    Docs = get_docs(),
+    lists:foreach(fun(Doc) ->
+			  httpc:request('PUT',{"http://192.168.1.69:15984/babelstat",[Doc],"application/json"},[],[])
+		  end,Docs).
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
