@@ -10,12 +10,11 @@ Left 100 float.
 Left 200 open.
 Left 300 close.
 Left 400 fn.
+Left 500 add.
 Left 500 minus.
-Left 600 add.
-Left 700 power.
-Left 800 multiply.
-Left 900 divide.
-
+Left 600 power.
+Left 700 multiply.
+Left 800 divide.
 
 eval -> expr		     : '$1'.
 
@@ -33,15 +32,13 @@ factor -> float		     : unwrap('$1').
 factor -> open expr close    : '$2'.
 factor -> pi                 : math(unwrap('$1')).
     
-    
-
 Erlang code.
 
 
 
-unwrap({_,_,V}) -> io:format("unwrap3 ~p~n",[V]),V;
-unwrap({_,V}) -> io:format("unwrap2 ~p~n",[V]), V;
-unwrap(V) -> io:format("unwrap ~p~n",[V]), V.
+unwrap({_,_,V}) -> V;
+unwrap({_,V}) -> V;
+unwrap(V) -> V.
 
 add(A,B) ->
     A+B.
