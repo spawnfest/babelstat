@@ -50,8 +50,8 @@ create_doc(N) ->
       {<<"series_category">>,<<"code">>},
       {<<"title">>,<<"number of lines">>},
       {<<"source">>,<<"pure fiction">>},
-      {<<"calculation">>,<<"false">>},
-      {<<"constant">>,<<"false">>}
+      {<<"calculation">>,false},
+      {<<"constant">>,false}
      ]}.
 
 create_doc(Metric, Scale, Frequency,N) -> 
@@ -71,7 +71,7 @@ create_doc(Metric, Scale, Frequency,N) ->
       {<<"series_category">>,<<"code">>},
       {<<"title">>,<<"number of lines">>},
       {<<"source">>,<<"pure fiction">>},
-      {<<"calculation">>,<<"false">>},
-      {<<"constant">>,<<"false">>}
+      {<<"calculation">>,false},
+      {<<"constant">>,false}
      ]}.
     

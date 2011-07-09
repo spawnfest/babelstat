@@ -58,49 +58,40 @@ query_db(Params, {_,_,FilterFrequency, From, To}= Filter) ->
 	end.
 			
 date_adjust(Values, Dates, Frequency, Docs, StartDate, EndDate) ->	
-    {Values,Dates,Docs}.
-    %% case lists:any(fun(D) -> D#babelstat.frequency =/= Frequency end,Docs) of
-    %% 	true ->	    
-    %% 	    ParsedStart = parse_date(list_to_binary(StartDate)),
-    %% 	    ParsedEnd = parse_date(list_to_binary(EndDate)),
-    %% 	    io:format("Frequency mismatch, aggregating~n"),
-    %% 	    %%Dates need to be filtered (aggregated to the frequency)
-    %% 	    ValidDates = date_range:create_range(ParsedStart,ParsedEnd, Frequency),
-    %% 	    Zipped = lists:zip3(Values,Dates,Docs),
-    %% 	    lists:foldl(fun(N,_Acc) ->
-    %% 				{_Match,_Dont} = lists:partition(fun(P) ->
-    %% 								       {_,D,_} = P,
-    %% 								       Range = lists:sublist(ValidDates,N,N+1),
-    %% 								       Dt = parse_date(list_to_binary(D)),
-    %% 								       is_date_in_range(Range, Dt)
-    %% 							       end,Zipped) 
-    %% 				{0.0,undefined,undefined},lists:seq(1,length(ValidDates)) end);
-			    
-			   
-
-
-%% 	    R = [lists:map(F,Zipped) || F= [fun(Z) -> 
-%% 						    io:format("Sub ~p~n",[Z]),
-%% 						    lists:foldl(fun(Y,Sum) ->
-%% 	    								io:format("Sum ~p~n",[Sum]),
-%% %	    								{V,_,_} = Sum,
-%% 	    								io:format("Y ~p~n",[Y])
-%% 	    								%% {V2,D2,Doc2} = Y,
-%% 	    								%% {V+V2,D2,Doc2}
-%% 	    							end,{0.0,[],[]},lists:partition(fun(P) ->
-%% 													io:format("P = ~p~n",[P]),
-%% 	    												{_,D,_} = P,
-%% 	    												Range = lists:sublist(ValidDates,N,N+1),
-%% 	    												is_date_in_range(Range,D)
-%% 	    											end,Zipped))
-%% 	    				end || N <- lists:seq(1,length(ValidDates))]],
-%%	    io:format("Beautiful ~p~n",[R]);
-    %% 	false ->
-    %% 	    {Values,Dates,Docs}
-    %% end.
+    case lists:any(fun(D) -> D#babelstat.frequency =/= Frequency end,Docs) of
+    	true ->	    
+    	    ParsedStart = parse_date(list_to_binary(StartDate)),
+    	    ParsedEnd = parse_date(list_to_binary(EndDate)),
+    	    %%Dates need to be filtered (aggregated to the frequency)
+    	    ValidDates = date_range:create_range(ParsedStart,ParsedEnd, Frequency),
+    	    Zipped = lists:zip3(Values,Dates,Docs),
+	    {_,MatchedList} = lists:foldl(fun(N,Acc) ->
+					   {Counter, List} = Acc,
+					   {Match,_Dont} = lists:partition(fun(P) ->
+									      {_,D,_} = P,
+									      Range = lists:sublist(ValidDates,N,N+1),
+									      Dt = parse_date(list_to_binary(D)),
+									      is_date_in_range(Range, Dt)
+								      end,lists:sublist(Zipped,Counter+1,length(Zipped))),
+						  case length(Match) of 
+						      0-> Acc;
+						      _ ->
+							  {Counter + length(Match),[aggregate_docs(Match,Frequency)|List]}
+						  end
+				   end,{0,[]},lists:seq(1,length(ValidDates))),
+	    MatchedList;
+	_ ->
+	    {Values,Dates,Docs}
+    end.
+		    
+aggregate_docs(DocList,NewFreq) ->
+    lists:foldl(fun(O,Acc) ->
+			{NoV, _,_} = Acc,
+			{V,D,Doc} = O,
+			{V+NoV, D,Doc#babelstat{frequency = NewFreq}}
+		end,{0.0,undefined,undefined},DocList).
 
 is_date_in_range(Range, Date)->
-    io:format("Range and date comparison ~p ~p~n",[Range,Date]),
     case length(Range) of 
 	0 ->
 	    false;
@@ -111,35 +102,13 @@ is_date_in_range(Range, Date)->
 	    To = hd(lists:reverse(Range)),
 	    case {{Date >= From},{Date =< To}} of
 		{{true},{true}} ->
-		    io:format("Is in range~n"),
 		    true;
 		{_,_} ->
-		    io:format("Not in range~n"),
 		    false
 	    end;
 	_ ->
 	    false
     end.
-%% is_date_in_range(Range,D) ->    
-%%     Date = parse_date(list_to_binary(D)),
-%%     case length(Range) of 
-%% 	0 ->
-%% 	    false;
-%% 	1 ->
-%% 	    Date =< parse_date(list_to_binary(hd(Range)));	    
-%% 	2 ->
-%% 	    From = parse_date(list_to_binary(hd(Range))),
-%% 	    To = parse_date(list_to_binary(hd(lists:reverse(Range)))),
-%% 	    case {{Date >= From},{Date =< To}} of
-%% 		{true,true} ->
-%% 		    true;
-%% 		{_,_} ->
-%% 		    false
-%% 	    end;
-%% 	_ ->
-%% 	    false
-%%     end.
-    
 	    
 parse_date(<<Y:4/binary,"-",M:1/binary,"-",D:1/binary>>) ->
     {_,{H,Min,Sec}} = erlang:localtime(),
