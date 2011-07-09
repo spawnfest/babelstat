@@ -15,6 +15,7 @@
 -export([waiting_for_workers/2]).
 
 -define(SERVER, ?MODULE).
+-define(DB_MODULE, babelstat_couchdb).
 
 -record(state, {
 	  callback :: fun(),
@@ -38,8 +39,7 @@ start_link(Query, Filter, Callback) ->
 %%% gen_fsm callbacks
 %%%===================================================================
 init([SearchQuery, Filter, Callback]) ->
-    io:format("up"),
-    case babelstat_database:query_database(SearchQuery) of
+    case ?DB_MODULE:query_database(SearchQuery) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
 	    case {Result#babelstat.constant =:= true, Result#babelstat.calculation =:= true} of
@@ -70,10 +70,9 @@ init([SearchQuery, Filter, Callback]) ->
 					 callback = Callback}}
 	    end;
 	{ok, Results} ->
-	    % done
-	    Results,
-	    ok;
-	_ ->
+	    {stop, done, #state{ result = Results,
+				 callback = Callback}};
+	no_results ->
 	    {stop, error, #state{ result = no_document_found,
 				  callback = Callback}}
     end.
