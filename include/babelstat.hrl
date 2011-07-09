@@ -3,6 +3,7 @@
 	{
 	  id,
 	  rev,
+	  type = babelstat,
 	  date,
 	  value,
 	  metric,
