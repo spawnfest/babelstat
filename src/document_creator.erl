@@ -9,7 +9,7 @@
 -module(document_creator).
 
 %% API
--export([get_docs/0, get_docs/3]).
+-export([get_docs/0, get_docs/3,send_to_couchdb/0]).
 
 %%%===================================================================
 %%% API
@@ -23,7 +23,11 @@ get_docs(Metric,Scale,Frequency) ->
     lists:map(fun(N) ->
 		     create_doc(Metric, Scale, Frequency,N)
 	      end,lists:seq(1,20)).
+
+send_to_couchdb() ->    
+    _Docs = get_docs(),
     
+    ok.
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
