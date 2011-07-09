@@ -17,32 +17,35 @@ query_database(#babelstat_query{ category = Category,
 				 series_category = SeriesCategory,
 				 title = Title }) ->
 
-    Options = [{keys, [Category,
+    Options = [{keys, [[Category,
 		       SubCategory,
 		       Subject,
 		       SeriesCategory,
-		       Title]},
+		       Title]]},
 	       {query_args, #view_query_args{
 		  include_docs = true
 		 }}],
+    
+    {ok, Db} = couchc:open_db(?DB_NAME),
 
-    case couchc:fold(?DB_NAME, {?DESIGN_NAME, ?VIEW_NAME}, fun get_results/2, Options) of
+    case couchc:fold(Db, {?DESIGN_NAME, ?VIEW_NAME}, fun get_results/2, Options) of
 	{error, {not_found, Reason}} ->
 	    error_logger:error_msg("Error querying DB: ~p", [Reason]),
 	    no_results;
 	{ok, {_, _, []}} ->
 	    no_results;
 	{ok, {_, _, Results}} ->
-	    Results,
-	    ok
+	    io:format("Results are ~p~n", [Results]),
+	    {ok, Results}
     end.
 
-get_results({Row}, Acc) ->
+get_results(Row0, Acc) ->
+    {Row} = Row0,
     {Doc} = proplists:get_value(doc, Row),
     Stat = #babelstat{ id = proplists:get_value(<<"_id">>, Doc),
 		       rev = proplists:get_value(<<"_rev">>, Doc),
 		       constant = proplists:get_value(<<"contstant">>, Doc, false),
-		       date = proplists:get_values(<<"date">>, Doc),
+		       date = proplists:get_value(<<"date">>, Doc),
 		       value = proplists:get_value(<<"value">>, Doc),
 		       metric = proplists:get_value(<<"metric">>, Doc),
 		       scale = proplists:get_value(<<"scale">>, Doc),
@@ -56,8 +59,7 @@ get_results({Row}, Acc) ->
 		       calculation = proplists:get_value(<<"calculation">>, Doc, false),
 		       source = to_list(proplists:get_value(<<"source">>, Doc))
 		     },
-    [Stat | Acc].
-
+    {ok, Acc ++ [Stat]}.
 
 to_atom(Value) when is_binary(Value) ->
     list_to_atom(string:to_lower(binary_to_list(Value))).

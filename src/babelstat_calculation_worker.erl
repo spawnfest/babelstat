@@ -47,8 +47,9 @@ init([SearchQuery, Filter, Callback]) ->
 		    % It's a constant
 		    Series = babelstat_utils:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
 								      Result#babelstat.scale, Result#babelstat.metric),
-		    {stop, done, #state{ result = Series,
-					 callback = Callback}};
+		    terminate(done, ignore,#state{ result = Series,
+						   callback = Callback}),
+		    {stop, normal};
 		{_, true} ->
 		    % It's a calculation
 		    {Queries, Algebra} = babelstat_utils:parse_calculation(Calc),
@@ -66,15 +67,18 @@ init([SearchQuery, Filter, Callback]) ->
 							     callback = Callback}};
 		{_, _} ->
 		    % This is a single document
-		    {stop, done, #state{ result = Result,
-					 callback = Callback}}
+		    terminate(done, ignore, #state{ result = Result,
+						    callback = Callback}),
+		    {stop, normal}
 	    end;
 	{ok, Results} ->
-	    {stop, done, #state{ result = Results,
-				 callback = Callback}};
+	    terminate(done, ignore,#state{ result = Results,
+					   callback = Callback}),
+	    {stop, normal};
 	no_results ->
-	    {stop, error, #state{ result = no_document_found,
-				  callback = Callback}}
+	    terminate(error, ignore,#state{ result = no_document_found,
+					   callback = Callback}),
+	    {stop, normal}
     end.
 
 -spec waiting_for_workers({done, Results::any} |
