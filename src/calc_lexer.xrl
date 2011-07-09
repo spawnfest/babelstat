@@ -7,16 +7,15 @@ Minus	  	= \-
 Multiply 	= \*
 Divide		= \/
 Power		= \^
-Function	= [A-Za-z]
+Function	= [A-Za-z]+
 Open		= \(
 Close		= \)
 Op		= [\+|\^|\*|\/]
-Unary		= 
 
 Rules.
 
-{Digit}+		  		    : {token, {float, TokenLine, convert_to_float(TokenChars)}}.
-\-?{D}+\.{D}+((E|e)(\+|\-)?{D}+)?     	    : {token, {float, TokenLine, list_to_float(TokenChars)}}.
+\-?{Digit}+		  		    : {token, {float, TokenLine, convert_to_float(TokenChars)}}.
+\-?{Digit}+\.{Digit}+((E|e)(\+|\-)?{D}+)?   : {token, {float, TokenLine, list_to_float(TokenChars)}}.
 {Plus}			           	    : {token, {add, TokenLine, list_to_atom(TokenChars)}}.
 {Minus}		           	    	    : {token, {minus, TokenLine, list_to_atom(TokenChars)}}.
 {Multiply}		           	    : {token, {multiply, TokenLine, list_to_atom(TokenChars)}}.
@@ -30,4 +29,4 @@ Rules.
 Erlang code.
 
 convert_to_float(List) ->
-    list_to_float(List++".0").
+    list_to_float(List++".0000000").

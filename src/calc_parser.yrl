@@ -12,9 +12,9 @@ Left 300 close.
 Left 400 fn.
 Left 500 add.
 Left 500 minus.
-Left 600 power.
-Left 700 multiply.
-Left 800 divide.
+Left 600 multiply.
+Left 700 divide.
+Left 800 power.
 
 eval -> expr		     : '$1'.
 
