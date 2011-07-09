@@ -15,8 +15,26 @@
 	  series_category,
 	  title,
 	  source,
-	  calculation = undefined,
+	  calculation = null,
 	  constant = false
+	}).
+
+-record(babelstat_query,
+	{
+	  category,
+	  sub_category,
+	  subject,
+	  series_category,
+	  title
+	}).
+
+-record(babelstat_filter,
+	{
+	  metric,
+	  scale,
+	  frequency,
+	  from_date,
+	  to_date
 	}).
 
 %%The output from shows

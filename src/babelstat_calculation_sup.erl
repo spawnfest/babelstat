@@ -9,16 +9,16 @@
 %% Supervisor callbacks
 -export([init/1]).
     
-start_link(SeriesToCalculate, MathNotion) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [SeriesToCalculate, MathNotion]).
+start_link(Query, Filter) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [Query, Filter]).
 
-init([SeriesToCalculate, MathNotion]) ->
+init([Query, Filter]) ->
     {ok, {{one_for_one, 0, 1}, [{babelstat_calculation_worker, {
-				   {babelstat_calculation_worker, start_link, [SeriesToCalculate, MathNotion, self()]},
+				   {babelstat_calculation_worker, start_link, [Query, Filter]},
 				   temporary, brutal_kill, worker, [babelstat_calculation_worker]}
 				}]}}.
 
-add_child(SeriesToCalculate, MathNotion, SupervisorPid) ->
+add_child(Query, Filter, SupervisorPid) ->
     supervisor:start_child(SupervisorPid, {babelstat_calculation_worker, {
-					     {babelstat_calculation_worker, start_link, [SeriesToCalculate, MathNotion, SupervisorPid]},
+					     {babelstat_calculation_worker, start_link, [Query, Filter, SupervisorPid]},
 					     temporary, brutal_kill, worker, [babelstat_calculation_worker]}}).
