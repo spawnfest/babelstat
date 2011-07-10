@@ -3,16 +3,24 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/3]).
+-export([start_link/0]).
+-export([add_child/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
-    
-start_link(Query, Filter, Callback) ->
-    supervisor:start_link(?MODULE, [Query, Filter, Callback]).
 
-init([Query, Filter, Callback]) ->
-    WorkerSpec = {babelstat_calculation_worker,
-		    {babelstat_calculation_worker, start_link, [Query, Filter, Callback]},
-		    temporary, brutal_kill, worker, [babelstat_calculation_worker]},
-    {ok, {{one_for_one, 0, 1}, [WorkerSpec]}}.
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+init(_Args) ->
+    CalculationSpec = {babelstat_calculation,
+			  {babelstat_calculation, start_link, []},
+			  temporary,
+			  brutal_kill,
+			  supervisor,
+			  [babelstat_calculation]},
+    {ok, {{simple_one_for_one, 0, 1},
+	  [CalculationSpec]}}.
+
+add_child(Query, Filter, Callback) ->
+    supervisor:start_child(?MODULE, [Query, Filter, Callback]).

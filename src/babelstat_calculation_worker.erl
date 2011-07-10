@@ -12,7 +12,8 @@
 	 terminate/3, code_change/4]).
 
 %% gen_fsm states
--export([waiting_for_workers/2]).
+-export([waiting_for_workers/2,
+	 doing_calculation/2]).
 
 -define(SERVER, ?MODULE).
 -define(DB_MODULE, babelstat_couchdb).
@@ -39,6 +40,17 @@ start_link(Query, Filter, Callback) ->
 %%% gen_fsm callbacks
 %%%===================================================================
 init([SearchQuery, Filter, Callback]) ->
+    process_flag(trap_exit, true),
+    gen_fsm:send_event(self(), start),
+    {ok, doing_calculation, #state {
+	   callback = Callback,
+	   filter = Filter,
+	   search_query = SearchQuery
+	   }}.
+
+doing_calculation(start, #state {
+		    filter = Filter,
+		    search_query = SearchQuery} = State) ->
     case ?DB_MODULE:query_database(SearchQuery) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
@@ -47,30 +59,23 @@ init([SearchQuery, Filter, Callback]) ->
 		    % It's a constant
 		    Series = babelstat_utils:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
 								      Result#babelstat.scale, Result#babelstat.metric),
-		    terminate(done, ignore,#state{ result = Series,
-						   callback = Callback}),
-		    {stop, normal};
+		    {stop, normal, State#state{ result = {result, Series} }};
 		{_, true} ->
 		    % It's a calculation
 		    {Queries, Algebra} = babelstat_utils:parse_calculation(Calc),
-		    io:format("Queries are ~p~n", [Queries]),
 		    Self = self(),
 		    Workers = length(lists:map(fun(Serie) ->
-						       io:format("Sending query remind ~p~n", [Self]),
 						       babelstat_calculation_worker:start_link(Serie, Filter,
 											       fun(Res) ->
 												       gen_fsm:send_event(Self, Res)
 											       end)
 					end, Queries)),
-		    {ok, waiting_for_workers, #state{workers = Workers,
-						     algebra = Algebra,
-						     result = [],
-						     callback = Callback}};
+		    {next_state, waiting_for_workers, State#state{ workers = Workers,
+								   algebra = Algebra,
+								   result = [] }};
 		{_, _} ->
 		    % This is a single document
-		    terminate(done, ignore, #state{ result = Result,
-						    callback = Callback}),
-		    {stop, normal}
+		    {stop, normal, State#state{ result = {result, Result} }}
 	    end;
 	{ok, Results} ->
 	    {Dates,Values} = lists:foldl(fun(Doc, Acc) ->
@@ -78,28 +83,25 @@ init([SearchQuery, Filter, Callback]) ->
 						 {Dates++[Doc#babelstat.date],Values++[Doc#babelstat.value]}     
 					 end,{[],[]},Results),
 	    Results1 = babelstat_utils:convert_docs_to_series(SearchQuery, Filter, {Values,Dates}, Results),
-	    terminate(done, ignore,#state{ result = Results1,
-					   callback = Callback}),
-	    {stop, normal};
+	    {stop, normal, State#state{ result = {result, Results1} }};
 	no_results ->
-	    terminate(error, ignore,#state{ result = no_document_found,
-					   callback = Callback}),
-	    {stop, normal}
+	    {stop, error,  State#state{ result = {error, no_document_found} }}
     end.
 
--spec waiting_for_workers({done, Results::any} |
+-spec waiting_for_workers({result, Results::any} |
 			  {error, Error::any}, #state{}) ->
-				 {stop, done, #state{}} |
+				 {stop, normal, #state{}} |
+				 {stop, error, #state{}} |
 				 {next_state, waiting_for_workers, #state{}}.
 waiting_for_workers({error, Error},  State) ->
-    {stop, error, State#state{ result = Error}};
-waiting_for_workers({done, NewResults}, #state{result = Results,
+    {stop, error, State#state{ result = {error, Error}}};
+waiting_for_workers({result, NewResults}, #state{result = Results,
 					       workers = 1,
 					       algebra = Algebra } = State) ->
     CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Algebra, Results++[NewResults])),
-    {stop, done, State#state{ result = NewResults#babelstat_series{values = CalculatedResults},
+    {stop, normal, State#state{ result = {result, NewResults#babelstat_series{values = CalculatedResults}},
 			      workers = 0 }};
-waiting_for_workers({done, NewResult}, #state{ result = Result, 
+waiting_for_workers({result, NewResult}, #state{ result = Result, 
 					       workers = Workers} = State) ->
     {next_state, waiting_for_workers, State#state{ result = Result ++ [NewResult],
 						   workers = Workers - 1}}.
@@ -154,6 +156,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, StateName, State) ->
+    io:format("_Info is ~p~n", [_Info]),
     {next_state, StateName, State}.
 
 %%--------------------------------------------------------------------
@@ -167,11 +170,10 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(error, _, #state{ result = Error, callback = Callback }) ->
-    Callback({error, Error});
-terminate(done, _, #state{ result = Result, callback = Callback }) ->
-    io:format("I am done, pidding my buddy, i am ~p~n", [self()]),
-    Callback({done, Result});
+terminate(error, _, #state { result = Result, callback = Callback }) ->
+    Callback(Result);
+terminate(normal, _, #state{ result = Result, callback = Callback }) ->
+    Callback(Result);
 
 terminate(_Reason, _StateName, _State) ->
     ok.
