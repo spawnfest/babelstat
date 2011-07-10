@@ -1,6 +1,6 @@
 -module(babelstat_couchdb).
 -behaviour(gen_babelstat_db).
--include("babelstat.hrl").
+-include_lib("babelstat/include/babelstat.hrl").
 -include_lib("couch/include/couch_db.hrl").
 -export([query_database/2,
 	 save_document/1]).
@@ -90,7 +90,8 @@ babelstat_to_document(#babelstat { constant = Constant,
 				   source = Source,
 				   created_date = CreateDate
 				 }) ->
-    {[{<<"constant">>, Constant},
+    {[{<<"type">>, <<"babelstat">>},
+      {<<"constant">>, Constant},
       {<<"date">>, to_iso(Date)},
       {<<"value">>, Value},
       {<<"metric">>, Metric},
@@ -102,7 +103,7 @@ babelstat_to_document(#babelstat { constant = Constant,
       {<<"subject">>, Subject},
       {<<"series_category">>, SeriesCategory},
       {<<"title">>, Title},
-      {<<"calculation">>, Calculation},
+      {<<"calculation">>, check_undefined(Calculation)},
       {<<"source">>, Source},
       {<<"created_date">>, to_iso(CreateDate)}]}.
 
@@ -147,12 +148,16 @@ to_iso({{Year, Month, Day}, {Hour, Minute, Second}}) ->
 
 create_date_part(Date) when is_integer(Date) ->
     create_date_part(integer_to_list(Date));
-create_date_part(Date) when length(Date) =:= 4 ->
-    list_to_binary(integer_to_list(Date));
-create_date_part(Date) when length(Date) =:= 2 ->
-    Date;
+create_date_part(Date) when length(Date) =:= 4;
+			    length(Date) =:= 2 ->
+    list_to_binary(Date);
 create_date_part(Date) when length(Date) =:= 1 ->
-    string:right(Date, 2, $0).
+    list_to_binary(string:right(Date, 2, $0)).
+
+check_undefined(undefined) ->
+    null;
+check_undefined(Else) ->
+    Else.
 
 
 to_atom(Value) when is_binary(Value) ->
