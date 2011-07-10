@@ -7,7 +7,7 @@
 %%% Created :  9 Jul 2011 by nisbus <>
 %%%-------------------------------------------------------------------
 -module(babelstat_utils).
--include("babelstat.hrl").
+-include("../include/babelstat.hrl").
 %% API
 -export([transpose/1, date_adjust/6,convert_metric/3, convert_scale/3,convert_docs_to_series/4,create_constants_series/5]).
 -export([replace_token_with_value/3,parse_calculation/1,replace_tokens_with_values/2]).
@@ -50,7 +50,7 @@ date_adjust(Values, Dates, Frequency, Docs, StartDate, EndDate) ->
     end.
 
 -spec convert_docs_to_series(#babelstat_query{}, #babelstat_filter{},
-			     {Values::[float()], Dates::[calendar:t_datetime1970()]}, Docs::[db_result()]) ->
+			     {Values::[float()], Dates::[calendar:t_datetime1970()]}, Docs::[#babelstat{}]) ->
 				   #babelstat_series{}.
 convert_docs_to_series(#babelstat_query{ category = Category,
 					 sub_category = Sub_Category,
@@ -73,7 +73,7 @@ convert_docs_to_series(#babelstat_query{ category = Category,
 		      frequency = Frequency, category = Category, sub_category = Sub_Category, 
 		      subject = Subject, series_category = Series_Category, title = Title, 
 		      legend = create_legend(Params,Filter)}.
-    
+
 -spec create_constants_series(#babelstat_query{},
 			      #babelstat_filter{}, Value :: float(), DocScale :: integer(),
 			      DocMetric :: binary() | atom()) -> #babelstat_series{}.
