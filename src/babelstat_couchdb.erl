@@ -1,7 +1,7 @@
 -module(babelstat_couchdb).
 -behaviour(gen_babelstat_db).
 -include("../include/babelstat.hrl").
--include_lib("couch_db.hrl").
+-include_lib("couch/include/couch_db.hrl").
 -export([query_database/1,
 	 save_document/1]).
 
@@ -36,7 +36,6 @@ query_database(#babelstat_query{ category = Category,
 	{ok, {_, _, []}} ->
 	    no_results;
 	{ok, {_, _, Results}} ->
-	    io:format("Results are ~p~n", [Results]),
 	    {ok, Results}
     end.
 

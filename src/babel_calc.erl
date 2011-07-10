@@ -9,7 +9,7 @@
 -module(babel_calc).
 -include("../include/babelstat.hrl").
 %% API
--export([eval/1,query_db/2]).
+-export([calculate/1,eval/1,query_db/2]).
 -export([test_dates/0,test_calculation_parser/0,test_query/0,test_query/3]).
 %%%===================================================================
 %%% API

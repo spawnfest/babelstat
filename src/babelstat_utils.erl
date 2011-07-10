@@ -19,8 +19,8 @@
 %%@doc Transposes a list of lists.
 -spec transpose([list()]) -> [list()].
 transpose([]) -> [];
-transpose([Single,[]]) -> Single#babelstat.value;
-transpose([H|_]=L) -> [lists:map(F, L) || F <- [fun(A) -> lists:nth(N, A#babelstat.value) end || N <- lists:seq(1, length(H))]].
+transpose([Single,[]]) -> Single;
+transpose([H|_]=L) -> [lists:map(F, L) || F <- [fun(A) -> lists:nth(N, A) end || N <- lists:seq(1, length(H))]].
 
 %%@doc Aggregates documents to a common timeframe (Needs optimizing)
 -spec date_adjust(list(), list(), atom(), list(), string(), string()) -> list().
@@ -52,7 +52,11 @@ date_adjust(Values, Dates, Frequency, Docs, StartDate, EndDate) ->
     end.
 
 		    
-convert_docs_to_series([Category, Sub_Category, Subject, Series_Category, Title] = Params, {Metric, Scale, Frequency, _, _} = Filter, {Values, Dates}, Docs) ->
+convert_docs_to_series(#babelstat_query{ category = Category,
+					 sub_category = Sub_Category,
+					 subject = Subject,
+					 series_category = Series_Category,
+					 title = Title } = Params, {Metric, Scale, Frequency, _, _} = Filter, {Values, Dates}, Docs) ->
     {ConvertedValues,_} = lists:foldl(fun(Doc, Acc) ->
 					      {NewValues, Counter} = Acc,
 					      DocScale = Doc#babelstat.scale,
@@ -62,7 +66,6 @@ convert_docs_to_series([Category, Sub_Category, Subject, Series_Category, Title]
 					      Converted = convert_metric(DocMetric, Metric,NewValue),
 					      {NewValues++[Converted],Counter+1} 
 		       end,{[],0},Docs),
-
     #babelstat_series{dates = Dates, values = ConvertedValues, metric = Metric, scale = Scale, 
 		      frequency = Frequency, category = Category, sub_category = Sub_Category, 
 		      subject = Subject, series_category = Series_Category, title = Title, 
@@ -99,9 +102,14 @@ aggregate_docs(DocList,NewFreq) ->
 		end,{0.0,undefined,undefined},DocList).
 
 -spec create_legend(list(),tuple()) -> string().
-create_legend([Category, Sub_Category, Subject, Series_Category, Title], {Metric, _, _, _, _}) ->
+create_legend(#babelstat_query{ category = Category,
+				sub_category = Sub_Category,
+				subject = Subject,
+				series_category = Series_Category,
+				title = Title }, {Metric, _, _, _, _}) ->
     Sep = " - ",
-    lists:append([Category, Sep, Sub_Category, Sep, Subject, Sep, Series_Category, Sep, Title, " (",Metric,")"]).
+    "".
+    %lists:append([Category, Sep, Sub_Category, Sep, Subject, Sep, Series_Category, Sep, Title, " (",Metric,")"]).
 
 %%%===================================================================
 %%% Date helper functions
@@ -160,8 +168,8 @@ parse_date(<<Y:4/binary,"-",M:2/binary,"-",D:2/binary," ",H:2/binary,":",Min:2/b
 %%% Metric and scale helper functions
 %%%===================================================================
 -spec convert_metric(float(),float(), float()) -> float().
-convert_metric(OriginalMetric,NewMetric,Value) ->
-    measurements:convert(OriginalMetric, NewMetric, Value).
+convert_metric(OriginalMetric, NewMetric, Value) ->
+    measurements:convert(binary_to_list(OriginalMetric), binary_to_list(NewMetric), Value).
 
 -spec convert_scale(float(),float(), float()) -> float().
 convert_scale(OriginalScale, NewScale, Value) ->
@@ -181,13 +189,19 @@ convert_scale(OriginalScale, NewScale, Value) ->
 %%% Metric and scale helper functions
 %%%===================================================================
 -spec parse_calculation(string()) -> {list(),string()}.		       
-parse_calculation(Calculation) ->
+parse_calculation(Calculation1) ->
+    Calculation = binary_to_list(Calculation1),
     Tokens = string:tokens(Calculation,"()+-/*^"),
     PrettyAlgebra = simplify_algebra(Tokens,Calculation),
     Queries = lists:map(fun(Token) ->
 				Items = string:tokens(Token,"{,}"),
 				{C,SuC,Subj,Sc,T} = list_to_tuple(Items),
-				[C,SuC,Subj,Sc,T]
+				#babelstat_query{ category = list_to_binary(C),
+						  sub_category = list_to_binary(SuC),
+						  subject = list_to_binary(Subj),
+						  series_category = list_to_binary(Sc),
+						  title = list_to_binary(T)
+						}
 			end,Tokens),
     {Queries, PrettyAlgebra}.
     
@@ -202,8 +216,12 @@ replace(Original, ToReplace, ReplaceWith) ->
 
 -spec replace_tokens_with_values(string(), [list()]) -> [string()].					
 replace_tokens_with_values(Algebra,List) ->
+    io:format("Algebra is ~p~n", [{Algebra,List}]),
     Tokens = string:tokens(Algebra,"()+-/*^"),
-    Transposed = transpose(List),    
+    Lists1 = lists:map(fun(#babelstat_series{ values = Values}) ->
+			       Values
+		       end, List),
+    Transposed = transpose(Lists1),    
     R = lists:map(fun(X) ->
 			  lists:foldl(fun(Y,Acc) ->
 					      {A,Counter} = Acc,

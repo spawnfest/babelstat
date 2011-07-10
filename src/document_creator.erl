@@ -9,7 +9,7 @@
 -module(document_creator).
 
 %% API
--export([get_docs/0, get_docs/3,send_to_couchdb/0, send_to_couchdb/3]).
+-export([get_docs/0, get_docs/4,send_to_couchdb/0, send_to_couchdb/4]).
 
 %%%===================================================================
 %%% API
@@ -19,9 +19,9 @@ get_docs() ->
 		     create_doc(N)
 	      end,lists:seq(1,20)).
 		  
-get_docs(Metric,Scale,Frequency) ->
+get_docs(Metric,Scale,Frequency, Title) ->
     lists:map(fun(N) ->
-		     create_doc(Metric, Scale, Frequency,N)
+		     create_doc(Metric, Scale, Frequency, Title, N)
 	      end,lists:seq(1,20)).
 
 send_to_couchdb() ->    
@@ -30,9 +30,9 @@ send_to_couchdb() ->
 		      babelstat_couchdb:save_document(Doc)
 	      end,lists:seq(1,20)).
     
-send_to_couchdb(Metric,Scale,Frequency) ->    
+send_to_couchdb(Metric,Scale,Frequency, Title) ->    
     lists:map(fun(N) ->
-		      Doc = create_doc(Metric, Scale, Frequency,N),
+		      Doc = create_doc(Metric, Scale, Frequency,Title, N),
 		      babelstat_couchdb:save_document(Doc)
 	      end,lists:seq(1,20)).
     
@@ -53,7 +53,7 @@ create_doc(N) ->
       {<<"value">>, N*1.0},
       {<<"metric">>, <<"unit">>},
       {<<"scale">>, 1},
-      {<<"frequency">>,<<"daily">>},
+      {<<"frequency">>,<<"days">>},
       {<<"location">>,<<"[444,33]">>},
       {<<"category">>,<<"Spawnfest">>},
       {<<"sub_category">>,<<"Teams">>},
@@ -65,7 +65,7 @@ create_doc(N) ->
       {<<"constant">>,false}
      ]}.
 
-create_doc(Metric, Scale, Frequency,N) -> 
+create_doc(Metric, Scale, Frequency, Title, N) -> 
     Date = "2011-7-"++integer_to_list(N),
     {[
       {<<"type">>,<<"babelstat">>},
@@ -79,7 +79,7 @@ create_doc(Metric, Scale, Frequency,N) ->
       {<<"sub_category">>,<<"Teams">>},
       {<<"subject">>,<<"Jesus don't want me for a sunBEAM">>},
       {<<"series_category">>,<<"code">>},
-      {<<"title">>,<<"number of lines">>},
+      {<<"title">>,Title},
       {<<"source">>,<<"pure fiction">>},
       {<<"calculation">>,false},
       {<<"constant">>,false}

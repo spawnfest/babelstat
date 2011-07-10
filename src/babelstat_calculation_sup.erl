@@ -9,7 +9,7 @@
 -export([init/1]).
     
 start_link(Query, Filter, Callback) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [Query, Filter, Callback]).
+    supervisor:start_link(?MODULE, [Query, Filter, Callback]).
 
 init([Query, Filter, Callback]) ->
     WorkerSpec = {babelstat_calculation_worker,

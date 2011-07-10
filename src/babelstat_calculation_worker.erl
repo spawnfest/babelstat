@@ -42,7 +42,7 @@ init([SearchQuery, Filter, Callback]) ->
     case ?DB_MODULE:query_database(SearchQuery) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
-	    case {Result#babelstat.constant =:= true, Result#babelstat.calculation =:= true} of
+	    case {Result#babelstat.constant =:= true, is_binary(Result#babelstat.calculation)} of
 		{true, _} ->
 		    % It's a constant
 		    Series = babelstat_utils:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
@@ -53,18 +53,19 @@ init([SearchQuery, Filter, Callback]) ->
 		{_, true} ->
 		    % It's a calculation
 		    {Queries, Algebra} = babelstat_utils:parse_calculation(Calc),
+		    io:format("Queries are ~p~n", [Queries]),
 		    Self = self(),
 		    Workers = length(lists:map(fun(Serie) ->
-						{ok, Pid} = babelstat_calculation_worker:start_link(Serie, Filter,
-												    fun(Res) ->
-													    gen_fsm:send_event(Self, Res)
-												    end),
-						Pid
+						       io:format("Sending query remind ~p~n", [Self]),
+						       babelstat_calculation_worker:start_link(Serie, Filter,
+											       fun(Res) ->
+												       gen_fsm:send_event(Self, Res)
+											       end)
 					end, Queries)),
-		    {next_state, waiting_for_workers, #state{workers = Workers,
-							     algebra = Algebra,
-							     result = [],
-							     callback = Callback}};
+		    {ok, waiting_for_workers, #state{workers = Workers,
+						     algebra = Algebra,
+						     result = [],
+						     callback = Callback}};
 		{_, _} ->
 		    % This is a single document
 		    terminate(done, ignore, #state{ result = Result,
@@ -72,7 +73,12 @@ init([SearchQuery, Filter, Callback]) ->
 		    {stop, normal}
 	    end;
 	{ok, Results} ->
-	    terminate(done, ignore,#state{ result = Results,
+	    {Dates,Values} = lists:foldl(fun(Doc, Acc) ->
+						 {Dates, Values} = Acc,
+						 {Dates++[Doc#babelstat.date],Values++[Doc#babelstat.value]}     
+					 end,{[],[]},Results),
+	    Results1 = babelstat_utils:convert_docs_to_series(SearchQuery, Filter, {Values,Dates}, Results),
+	    terminate(done, ignore,#state{ result = Results1,
 					   callback = Callback}),
 	    {stop, normal};
 	no_results ->
@@ -90,7 +96,7 @@ waiting_for_workers({error, Error},  State) ->
 waiting_for_workers({done, NewResults}, #state{result = Results,
 					       workers = 1,
 					       algebra = Algebra } = State) ->
-    CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Results++[NewResults], Algebra)),
+    CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Algebra, Results++[NewResults])),
     {stop, done, State#state{ result = CalculatedResults,
 			      workers = 0 }};
 waiting_for_workers({done, NewResult}, #state{ result = Result, 
@@ -164,6 +170,7 @@ handle_info(_Info, StateName, State) ->
 terminate(error, _, #state{ result = Error, callback = Callback }) ->
     Callback({error, Error});
 terminate(done, _, #state{ result = Result, callback = Callback }) ->
+    io:format("I am done, pidding my buddy, i am ~p~n", [self()]),
     Callback({done, Result});
 
 terminate(_Reason, _StateName, _State) ->
