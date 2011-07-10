@@ -216,7 +216,6 @@ replace(Original, ToReplace, ReplaceWith) ->
 
 -spec replace_tokens_with_values(string(), [list()]) -> [string()].					
 replace_tokens_with_values(Algebra,List) ->
-    io:format("Algebra is ~p~n", [{Algebra,List}]),
     Tokens = string:tokens(Algebra,"()+-/*^"),
     Lists1 = lists:map(fun(#babelstat_series{ values = Values}) ->
 			       Values
