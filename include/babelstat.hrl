@@ -1,57 +1,60 @@
+-export_type([geo/0, frequency/0]).
+-type geo() :: [{float(),float()}].
+-type frequency() :: seconds | minutes | hours | days | weeks | months | years.
 %%The document as it is in the database
 -record(babelstat,
 	{
-	  id,
-	  rev,
-	  type = babelstat,
-	  date,
-	  value,
-	  metric,
-	  scale,
-	  frequency,
-	  location,
-	  category,
-	  sub_category,
-	  subject,
-	  series_category,
-	  title,
-	  source,
-	  calculation = null,
-	  constant = false
+	  id :: binary(),
+	  rev :: binary(),
+	  type :: atom | babelstat,
+	  date :: calendar:t_datetime1970(),
+	  value :: float(),
+	  metric :: binary(),
+	  scale :: integer(),
+	  frequency :: frequency(),
+	  location :: geo(),
+	  category :: binary(),
+	  sub_category :: binary(),
+	  subject :: binary(),
+	  series_category :: binary(),
+	  title :: binary(),
+	  source :: binary(),
+	  calculation :: binary(),
+	  constant :: boolean()
 	}).
 
 -record(babelstat_query,
 	{
-	  category,
-	  sub_category,
-	  subject,
-	  series_category,
-	  title
+	  category :: binary(),
+	  sub_category :: binary(),
+	  subject :: binary(),
+	  series_category :: binary(),
+	  title :: binary()
 	}).
 
 -record(babelstat_filter,
 	{
-	  metric,
-	  scale,
-	  frequency,
-	  from_date,
-	  to_date
+	  metric :: binary() | atom,
+	  scale :: integer(),
+	  frequency :: frequency(),
+	  from_date :: calendar:t_datetime1970(),
+	  to_date :: calendar:t_datetime1970()
 	}).
 
 %%The output from shows
 -record(babelstat_series,
 	{
-	  dates = [],
-	  values = [],
-	  metric,
-	  scale,
-	  frequency,
-	  location,
-	  category,
-	  sub_category,
-	  subject,
-	  series_category,
-	  title,
-	  source,
-	  legend
+	  dates :: [calendar:t_datetime1970()],
+	  values :: [float()],
+	  metric :: binary(),
+	  scale :: integer(),
+	  frequency :: frequency(),
+	  location :: geo() | undefined,
+	  category :: binary(),
+	  sub_category :: binary(),
+	  subject :: binary(),
+	  series_category :: binary(),
+	  title :: binary(),
+	  source :: binary(),
+	  legend :: binary()
 	}).
