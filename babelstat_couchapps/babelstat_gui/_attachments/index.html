@@ -10,6 +10,33 @@
     <h1>BabelStat</h1>
 
     <div id="profile"></div>
+    <div id="menu">
+      <h3>Select your data:</h3>
+      <div>
+	Categories:</br>
+	<select id="categories_drop"></select> 
+      </div>
+      <div>
+	Sub categories</br>
+	<select id="sub_categories_drop" onchange=></select> 
+      </div>
+      <div>
+	Subjects</br>
+	<select id="subjects_drop"></select> 
+      </div>
+      <div>
+	Series categories</br>
+	<select id="series_categories_drop"></select> 
+      </div>
+      <div>
+	Series</br>
+	<select id="title_drop"></select> 
+      </div>
+
+    </div>
+    <div id="data">
+      This is your data
+    </div>
     <div id="items"></div>
 
     <div id="sidebar">
@@ -24,6 +51,40 @@
       $("#profile").evently("profile", app);
       $.evently.connect("#account","#profile", ["loggedIn","loggedOut"]);
       $("#items").evently("items", app);
+
+      var baseurl = "http://192.168.1.69:15984/babelstat/_design/babelstat_common/_view/";
+      $("#categories_drop").append("<option>Select a category</option>");                              
+      $.ajax({url: baseurl+"categories?group=true",
+             success: function(data){
+                                      var rows = JSON.parse(data).rows;
+                                      rows.forEach(function(row){
+                                        $("#categories_drop").append("<option>"+row.key+"</option>");                              
+                                      })
+                                    }       
+             });
+      $("#categories_drop").change(function(value,ignore){          
+          $("#sub_categories_drop").append("<option>Select a sub category</option>"); 
+          $.ajax({url: baseurl+'sub_categories?group=true&keys=[\"'+value.target.value+'\"]',
+                success: function(data){
+                                         var rows = JSON.parse(data).rows;
+                                         rows.forEach(function(row){
+                                            $("#sub_categories_drop").append("<option>"+row.value+"</option>");                              
+                                         })
+                                       }       
+             });         
+      });
+      $("#sub_categories_drop").change(function(value,ignore){          
+          var category = $("#categories_drop").target.value;
+          $.ajax({url: baseurl+'subjects?group=true&keys=[\"'+category+'\",\"'+value.target.value+'\"]',
+                success: function(data){
+                                         var rows = JSON.parse(data).rows;
+                                         rows.forEach(function(row){
+                                            $("#sub_categories_drop").append("<option>"+row.value+"</option>");                              
+                                         })
+                                       }       
+             });         
+      });
+
     });
-  </script>  
+  </script>    
 </html>
