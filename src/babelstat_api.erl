@@ -2,7 +2,8 @@
 -include("../include/babelstat.hrl").
 -export([create_filter/5,
 	 create_query/5,
-	 run_query/3]).
+	 run_query/3,
+	 result_to_proplist/1]).
 
 -spec create_filter(Metric::binary(),
 		    Scale::integer(),
@@ -34,3 +35,38 @@ create_query(Category, SubCategory, Subject, SeriesCategory, Title) ->
 		       {ok, Pid::pid()}.
 run_query(Query, Filter, Callback) ->
     babelstat_calculation_sup:add_child(Query, Filter, Callback).
+
+-spec result_to_proplist(#babelstat_series{}) ->
+				[term()].
+result_to_proplist(#babelstat_series{ dates = Dates,
+				      values = Values,
+				      metric = Metric,
+				      scale = Scale,
+				      frequency = Frequency,
+				      location = Location,
+				      category = Category,
+				      sub_category = SubCategory,
+				      subject = Subject,
+				      series_category = SeriesCategory,
+				      title = Title,
+				      source = Source,
+				      legend = Legend }) ->
+    [{dates, Dates},
+     {values, Values},
+     {metric, Metric},
+     {scale, Scale},
+     {frequency, Frequency},
+     {location, Location},
+     {category, Category},
+     {sub_category, SubCategory},
+     {subject, Subject},
+     {series_category, SeriesCategory},
+     {title, Title},
+     {source, Source},
+     {legend, Legend}];
+result_to_proplist(no_results) ->
+    no_results;
+result_to_proplist(_) ->
+    unknown_results.
+
+
