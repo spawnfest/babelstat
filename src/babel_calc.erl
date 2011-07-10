@@ -16,7 +16,8 @@
 %%%===================================================================
 eval(Algebra) ->
     {ok,Ts,_} = calc_lexer:string(Algebra),
-    calc_parser:parse(Ts).
+    {ok, Result} = calc_parser:parse(Ts),
+    Result.
 
 
 get_documents(_Params,_Filter) ->
