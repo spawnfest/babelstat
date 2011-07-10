@@ -55,7 +55,7 @@ init([SearchQuery, Filter, Callback]) ->
 doing_calculation(start, #state {
 		    filter = Filter,
 		    search_query = SearchQuery} = State) ->
-    case ?DB_MODULE:query_database(SearchQuery) of
+    case ?DB_MODULE:query_database(SearchQuery, Filter) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
 	    case {Result#babelstat.constant =:= true, is_binary(Result#babelstat.calculation)} of
