@@ -23,7 +23,7 @@
 	  source :: binary(),
 	  calculation :: binary(),
 	  constant :: boolean(),
-	  created_at :: calendar:t_datetime1970()
+	  created_date :: calendar:t_datetime1970()
 	}).
 
 -record(babelstat_query,

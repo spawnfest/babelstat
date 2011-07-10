@@ -57,7 +57,7 @@ query_database(Key) ->
 -spec save_document(#babelstat{} | db_result()) ->
 		      ok | error.
 save_document(#babelstat {} = Babelstat) ->
-    save_document(babelstat_to_document(Babelstat));
+    save_document(babelstat_to_document(Babelstat#babelstat{create_date = erlang:localtime_to_universaltime(erlang:localtime())}));
 save_document(Doc) ->
     {ok, Db} = couchc:open_db(?DB_NAME),
     case couchc:save_doc(Db, Doc) of
@@ -87,7 +87,8 @@ babelstat_to_document(#babelstat { constant = Constant,
 				   series_category = SeriesCategory,
 				   title = Title,
 				   calculation = Calculation,
-				   source = Source
+				   source = Source,
+				   created_date = CreateDate
 				 }) ->
     {[{<<"constant">>, Constant},
       {<<"date">>, Date},
@@ -102,7 +103,8 @@ babelstat_to_document(#babelstat { constant = Constant,
       {<<"series_category">>, SeriesCategory},
       {<<"title">>, Title},
       {<<"calculation">>, Calculation},
-      {<<"source">>, Source}]}.
+      {<<"source">>, Source},
+      {<<"created_at">>, CreateDate}]}.
 
 document_to_babelstat(Doc) ->
     #babelstat{ id = proplists:get_value(<<"_id">>, Doc),
@@ -120,7 +122,8 @@ document_to_babelstat(Doc) ->
 		series_category = proplists:get_value(<<"series_category">>, Doc),
 		title = proplists:get_value(<<"title">>, Doc),
 		calculation = proplists:get_value(<<"calculation">>, Doc, false),
-		source = to_list(proplists:get_value(<<"source">>, Doc))
+		source = to_list(proplists:get_value(<<"source">>, Doc)),
+		created_date = to_date(proplists:get_value("created_date",Doc))
 	      }.
 
 %2011-07-10 08:59:10Z
