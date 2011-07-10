@@ -57,7 +57,7 @@ query_database(Key) ->
 -spec save_document(#babelstat{} | db_result()) ->
 		      ok | error.
 save_document(#babelstat {} = Babelstat) ->
-    save_document(babelstat_to_document(Babelstat#babelstat{create_date = erlang:localtime_to_universaltime(erlang:localtime())}));
+    save_document(babelstat_to_document(Babelstat#babelstat{created_date = erlang:localtime_to_universaltime(erlang:localtime())}));
 save_document(Doc) ->
     {ok, Db} = couchc:open_db(?DB_NAME),
     case couchc:save_doc(Db, Doc) of
