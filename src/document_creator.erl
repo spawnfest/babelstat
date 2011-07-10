@@ -9,7 +9,7 @@
 -module(document_creator).
 
 %% API
--export([get_docs/0, get_docs/3,send_to_couchdb/0]).
+-export([get_docs/0, get_docs/3,send_to_couchdb/0, send_to_couchdb/3]).
 
 %%%===================================================================
 %%% API
@@ -25,10 +25,17 @@ get_docs(Metric,Scale,Frequency) ->
 	      end,lists:seq(1,20)).
 
 send_to_couchdb() ->    
-    Docs = get_docs(),
-    lists:foreach(fun(Doc) ->
-			  httpc:request('PUT',{"http://192.168.1.69:15984/babelstat",[Doc],"application/json"},[],[])
-		  end,Docs).
+    lists:map(fun(N) ->
+		      Doc = create_doc(N),
+		      babelstat_couchdb:save_document(Doc)
+	      end,lists:seq(1,20)).
+    
+send_to_couchdb(Metric,Scale,Frequency) ->    
+    lists:map(fun(N) ->
+		      Doc = create_doc(Metric, Scale, Frequency,N),
+		      babelstat_couchdb:save_document(Doc)
+	      end,lists:seq(1,20)).
+    
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
@@ -39,10 +46,9 @@ send_to_couchdb() ->
 %%% Internal functions
 %%%===================================================================
 create_doc(N) ->
-    Date = "2000-1-"++integer_to_list(N),
+    Date = "2011-7-"++integer_to_list(N),
     {[
-      {<<"_id">>,N},
-      {<<"_rev">>,N},
+      {<<"type">>,<<"babelstat">>},
       {<<"date">>,list_to_binary(Date)},
       {<<"value">>, N*1.0},
       {<<"metric">>, <<"unit">>},
@@ -60,10 +66,9 @@ create_doc(N) ->
      ]}.
 
 create_doc(Metric, Scale, Frequency,N) -> 
-    Date = "2000-1-"++integer_to_list(N),
+    Date = "2011-7-"++integer_to_list(N),
     {[
-      {<<"_id">>,N},
-      {<<"_rev">>,N},
+      {<<"type">>,<<"babelstat">>},
       {<<"date">>,list_to_binary(Date)},
       {<<"value">>, N*1.0},
       {<<"metric">>, Metric},

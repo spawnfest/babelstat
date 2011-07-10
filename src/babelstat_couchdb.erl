@@ -1,7 +1,7 @@
 -module(babelstat_couchdb).
 -behaviour(gen_babelstat_db).
 -include("../include/babelstat.hrl").
--include_lib("couch/include/couch_db.hrl").
+-include_lib("couch_db.hrl").
 -export([query_database/1,
 	 save_document/1]).
 
@@ -40,36 +40,36 @@ query_database(#babelstat_query{ category = Category,
 	    {ok, Results}
     end.
 
-save_document(#babelstat {
-		 constant = Constant,
-		 date = Date,
-		 value = Value,
-		 metric = Metric,
-		 scale = Scale,
-		 frequency = Frequency,
-		 location = Location,
-		 category = Category,
-		 sub_category = SubCategory,
-		 subject = Subject,
-		 series_category = SeriesCategory,
-		 title = Title,
-		 calculation = Calculation,
-		 source = Source
-		}) ->
-    Doc = {[{<<"constant">>, Constant},
-	    {<<"date">>, Date},
-	    {<<"value">>, Value},
-	    {<<"metric">>, Metric},
-	    {<<"scale">>, Scale},
-	    {<<"frequency">>, Frequency},
-	    {<<"location">>, Location},
-	    {<<"category">>, Category},
-	    {<<"sub_category">>, SubCategory},
-	    {<<"subject">>, Subject},
-	    {<<"series_category">>, SeriesCategory},
-	    {<<"title">>, Title},
-	    {<<"calculation">>, Calculation},
-	    {<<"source">>, Source}]},
+save_document(Doc)->%% #babelstat {
+	      %% 	 constant = Constant,
+	      %% 	 date = Date,
+	      %% 	 value = Value,
+	      %% 	 metric = Metric,
+	      %% 	 scale = Scale,
+	      %% 	 frequency = Frequency,
+	      %% 	 location = Location,
+	      %% 	 category = Category,
+	      %% 	 sub_category = SubCategory,
+	      %% 	 subject = Subject,
+	      %% 	 series_category = SeriesCategory,
+	      %% 	 title = Title,
+	      %% 	 calculation = Calculation,
+	      %% 	 source = Source
+	      %% 	}) ->
+    %% Doc = {[{<<"constant">>, Constant},
+    %% 	    {<<"date">>, Date},
+    %% 	    {<<"value">>, Value},
+    %% 	    {<<"metric">>, Metric},
+    %% 	    {<<"scale">>, Scale},
+    %% 	    {<<"frequency">>, Frequency},
+    %% 	    {<<"location">>, Location},
+    %% 	    {<<"category">>, Category},
+    %% 	    {<<"sub_category">>, SubCategory},
+    %% 	    {<<"subject">>, Subject},
+    %% 	    {<<"series_category">>, SeriesCategory},
+    %% 	    {<<"title">>, Title},
+    %% 	    {<<"calculation">>, Calculation},
+    %% 	    {<<"source">>, Source}]},
     
     {ok, Db} = couchc:open_db(?DB_NAME),
     couchc:save_doc(Db, Doc).
