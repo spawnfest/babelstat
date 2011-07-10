@@ -96,7 +96,7 @@ waiting_for_workers({error, Error},  State) ->
 waiting_for_workers({done, NewResults}, #state{result = Results,
 					       workers = 1,
 					       algebra = Algebra } = State) ->
-    CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Results++[NewResults], Algebra)),
+    CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Algebra, Results++[NewResults])),
     {stop, done, State#state{ result = NewResults#babelstat_series{values = CalculatedResults},
 			      workers = 0 }};
 waiting_for_workers({done, NewResult}, #state{ result = Result, 
