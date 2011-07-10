@@ -63,9 +63,9 @@ init([SearchQuery, Filter, Callback]) ->
 											       end)
 					end, Queries)),
 		    {ok, waiting_for_workers, #state{workers = Workers,
-							     algebra = Algebra,
-							     result = [],
-							     callback = Callback}};
+						     algebra = Algebra,
+						     result = [],
+						     callback = Callback}};
 		{_, _} ->
 		    % This is a single document
 		    terminate(done, ignore, #state{ result = Result,
@@ -73,7 +73,12 @@ init([SearchQuery, Filter, Callback]) ->
 		    {stop, normal}
 	    end;
 	{ok, Results} ->
-	    terminate(done, ignore,#state{ result = Results,
+	    {Dates,Values} = lists:foldl(fun(Doc, Acc) ->
+						 {Dates, Values} = Acc,
+						 {Dates++[Doc#babelstat.date],Values++[Doc#babelstat.value]}     
+					 end,{[],[]},Results),
+	    Results1 = babelstat_utils:convert_docs_to_series(SearchQuery, Filter, {Values,Dates}, Results),
+	    terminate(done, ignore,#state{ result = Results1,
 					   callback = Callback}),
 	    {stop, normal};
 	no_results ->
