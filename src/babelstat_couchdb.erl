@@ -91,7 +91,7 @@ babelstat_to_document(#babelstat { constant = Constant,
 				   created_date = CreateDate
 				 }) ->
     {[{<<"constant">>, Constant},
-      {<<"date">>, Date},
+      {<<"date">>, to_iso(Date)},
       {<<"value">>, Value},
       {<<"metric">>, Metric},
       {<<"scale">>, Scale},
@@ -104,7 +104,7 @@ babelstat_to_document(#babelstat { constant = Constant,
       {<<"title">>, Title},
       {<<"calculation">>, Calculation},
       {<<"source">>, Source},
-      {<<"created_at">>, CreateDate}]}.
+      {<<"created_date">>, to_iso(CreateDate)}]}.
 
 document_to_babelstat(Doc) ->
     #babelstat{ id = proplists:get_value(<<"_id">>, Doc),
