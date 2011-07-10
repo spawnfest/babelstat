@@ -51,7 +51,6 @@ query_database(StartKey, EndKey) ->
 	{ok, {_, _, []}} ->
 	    no_results;
 	{ok, {_, _, Results}} ->
-	    io:format("Results are ~p~n", [Results]),
 	    {ok, Results}
     end.
 
