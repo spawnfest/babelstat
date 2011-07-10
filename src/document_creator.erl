@@ -14,7 +14,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-test_docs_to_couchdb(Metric, Scale,Frequency,Title) ->    
+test_docs_to_couchdb(Title,Metric, Scale,Frequency) ->    
     Docs = create_test_docs(Metric, Scale,Frequency,Title),
     lists:foreach(fun(Doc) ->
 			  babelstat_couchdb:save_document(Doc)
