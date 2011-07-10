@@ -42,7 +42,7 @@ init([SearchQuery, Filter, Callback]) ->
     case ?DB_MODULE:query_database(SearchQuery) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
-	    case {Result#babelstat.constant =:= true, Result#babelstat.calculation =:= true} of
+	    case {Result#babelstat.constant =:= true, is_binary(Result#babelstat.calculation)} of
 		{true, _} ->
 		    % It's a constant
 		    Series = babelstat_utils:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
@@ -62,7 +62,7 @@ init([SearchQuery, Filter, Callback]) ->
 												       gen_fsm:send_event(Self, Res)
 											       end)
 					end, Queries)),
-		    {next_state, waiting_for_workers, #state{workers = Workers,
+		    {ok, waiting_for_workers, #state{workers = Workers,
 							     algebra = Algebra,
 							     result = [],
 							     callback = Callback}};

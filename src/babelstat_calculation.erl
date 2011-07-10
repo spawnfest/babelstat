@@ -18,9 +18,11 @@ start_link(Query, Filter, Callback) ->
     gen_server:start_link(?MODULE, [Query, Filter, Callback], []).
 
 init([Query, Filter, Callback]) ->
-    {ok, Pid} = babelstat_calculation_worker:start_link(Query, Filter, Callback),
+    Res = babelstat_calculation_worker:start_link(Query, Filter, Callback),
+    io:format("Res is ~p~n", [Res]),
 %    erlang:monitor(process, Pid),
-    {ok, #state{ worker = Pid }}.
+    {ok, #state{}}.
+%    {ok, #state{ worker = Pid }}.
 
 handle_info({'EXIT', _Ref, process, Pid, _Reason}, #state{ worker = Pid } = State) ->
     {stop, normal, State}.
