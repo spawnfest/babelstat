@@ -9,33 +9,23 @@
 -module(document_creator).
 
 %% API
--export([get_docs/0, get_docs/4,send_to_couchdb/0, send_to_couchdb/4]).
-
+-export([test_docs_to_couchdb/4, send_documents_to_couchdb/10]).
+-include("../include/babelstat.hrl").
 %%%===================================================================
 %%% API
 %%%===================================================================
-get_docs() ->
-    lists:map(fun(N) ->
-		     create_doc(N)
-	      end,lists:seq(1,20)).
-		  
-get_docs(Metric,Scale,Frequency, Title) ->
-    lists:map(fun(N) ->
-		     create_doc(Metric, Scale, Frequency, Title, N)
-	      end,lists:seq(1,20)).
-
-send_to_couchdb() ->    
-    lists:map(fun(N) ->
-		      Doc = create_doc(N),
-		      babelstat_couchdb:save_document(Doc)
-	      end,lists:seq(1,20)).
+test_docs_to_couchdb(Title,Metric, Scale,Frequency) ->    
+    Docs = create_test_docs(Metric, Scale,Frequency,Title),
+    lists:foreach(fun(Doc) ->
+			  babelstat_couchdb:save_document(Doc)
+		  end,Docs).
     
-send_to_couchdb(Metric,Scale,Frequency, Title) ->    
-    lists:map(fun(N) ->
-		      Doc = create_doc(Metric, Scale, Frequency,Title, N),
-		      babelstat_couchdb:save_document(Doc)
-	      end,lists:seq(1,20)).
-    
+send_documents_to_couchdb(Category, SubCategory, Subject, SeriesCategory, Title, Source, DatesAndValues,Metric,Scale,Frequency) ->    
+    Docs = create_docs(Category, SubCategory, Subject, SeriesCategory, Title, Source, DatesAndValues,Metric,Scale,Frequency),
+    lists:foreach(fun(Doc) ->
+			  babelstat_couchdb:save_document(Doc)
+		  end,Docs).
+   
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
@@ -45,43 +35,33 @@ send_to_couchdb(Metric,Scale,Frequency, Title) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-create_doc(N) ->
-    Date = "2011-7-"++integer_to_list(N),
-    {[
-      {<<"type">>,<<"babelstat">>},
-      {<<"date">>,list_to_binary(Date)},
-      {<<"value">>, N*1.0},
-      {<<"metric">>, <<"unit">>},
-      {<<"scale">>, 1},
-      {<<"frequency">>,<<"days">>},
-      {<<"location">>,<<"[444,33]">>},
-      {<<"category">>,<<"Spawnfest">>},
-      {<<"sub_category">>,<<"Teams">>},
-      {<<"subject">>,<<"Jesus don't want me for a sunBEAM">>},
-      {<<"series_category">>,<<"code">>},
-      {<<"title">>,<<"number of lines">>},
-      {<<"source">>,<<"pure fiction">>},
-      {<<"calculation">>,false},
-      {<<"constant">>,false}
-     ]}.
+create_docs(Category, SubCategory, Subject, SeriesCategory, Title, Source, DatesAndValues,Metric, Scale,Frequency) ->
+    lists:map(fun({Date,Value}) ->    		
+		      #babelstat{date = Date,
+				 value = Value,
+				 metric =  Metric,
+				 scale = Scale,
+				 frequency = Frequency,
+				 location = [],
+				 category = Category,
+				 sub_category = SubCategory,
+				 subject = Subject,
+				 series_category = SeriesCategory,
+				 title = Title,
+				 source = Source,
+				 calculation = undefined,
+				 constant = false
+				}
+			  end, DatesAndValues).
+    
+create_test_docs(Metric,Scale,Frequency, Title) ->
+    DateList = dates:get_range({{2000,1,1},{2011,7,10}}),
+    
+    DatesAndValues = lists:map(fun(N) ->    		      
+		      Date = lists:nth(DateList,N),
+		      {Date,N*1.0}
+	      end,lists:seq(1,length(DateList))),
+    create_docs(<<"Spawnfest">>,<<"Teams">>,<<"Jesus don't want me for a sunBEAM">>,<<"code">>,Title,<<"pure fiction">>, DatesAndValues, Metric,Scale,Frequency).
 
-create_doc(Metric, Scale, Frequency, Title, N) -> 
-    Date = "2011-7-"++integer_to_list(N),
-    {[
-      {<<"type">>,<<"babelstat">>},
-      {<<"date">>,list_to_binary(Date)},
-      {<<"value">>, N*1.0},
-      {<<"metric">>, Metric},
-      {<<"scale">>, Scale},
-      {<<"frequency">>,Frequency},
-      {<<"location">>,<<"[444,33]">>},
-      {<<"category">>,<<"Spawnfest">>},
-      {<<"sub_category">>,<<"Teams">>},
-      {<<"subject">>,<<"Jesus don't want me for a sunBEAM">>},
-      {<<"series_category">>,<<"code">>},
-      {<<"title">>,Title},
-      {<<"source">>,<<"pure fiction">>},
-      {<<"calculation">>,false},
-      {<<"constant">>,false}
-     ]}.
+    
     
