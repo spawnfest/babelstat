@@ -42,7 +42,7 @@ init([SearchQuery, Filter, Callback]) ->
     case ?DB_MODULE:query_database(SearchQuery) of
 	{ok, [#babelstat{calculation = Calc} = Result|[]]} ->
 	    % Single result
-	    case {Result#babelstat.constant =:= true, Result#babelstat.calculation =:= true} of
+	    case {Result#babelstat.constant =:= true, is_binary(Result#babelstat.calculation)} of
 		{true, _} ->
 		    % It's a constant
 		    Series = babelstat_utils:create_constants_series(SearchQuery, Filter, Result#babelstat.value,
@@ -62,10 +62,10 @@ init([SearchQuery, Filter, Callback]) ->
 												       gen_fsm:send_event(Self, Res)
 											       end)
 					end, Queries)),
-		    {next_state, waiting_for_workers, #state{workers = Workers,
-							     algebra = Algebra,
-							     result = [],
-							     callback = Callback}};
+		    {ok, waiting_for_workers, #state{workers = Workers,
+						     algebra = Algebra,
+						     result = [],
+						     callback = Callback}};
 		{_, _} ->
 		    % This is a single document
 		    terminate(done, ignore, #state{ result = Result,
@@ -73,7 +73,12 @@ init([SearchQuery, Filter, Callback]) ->
 		    {stop, normal}
 	    end;
 	{ok, Results} ->
-	    terminate(done, ignore,#state{ result = Results,
+	    {Dates,Values} = lists:foldl(fun(Doc, Acc) ->
+						 {Dates, Values} = Acc,
+						 {Dates++[Doc#babelstat.date],Values++[Doc#babelstat.value]}     
+					 end,{[],[]},Results),
+	    Results1 = babelstat_utils:convert_docs_to_series(SearchQuery, Filter, {Values,Dates}, Results),
+	    terminate(done, ignore,#state{ result = Results1,
 					   callback = Callback}),
 	    {stop, normal};
 	no_results ->
