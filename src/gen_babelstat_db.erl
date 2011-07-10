@@ -3,6 +3,7 @@
 -export([behaviour_info/1]).
 
 behaviour_info(callbacks) ->
-    [{query_database, 1}];
+    [{query_database, 1},
+     {save_document, 1}];
 behaviour_info(_) ->
     undefined.
