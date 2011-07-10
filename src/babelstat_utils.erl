@@ -7,10 +7,10 @@
 %%% Created :  9 Jul 2011 by nisbus <>
 %%%-------------------------------------------------------------------
 -module(babelstat_utils).
--include("../include/babelstat.hrl").
+-include("babelstat.hrl").
 %% API
 -export([transpose/1, date_adjust/6,convert_metric/3, convert_scale/3,convert_docs_to_series/4,create_constants_series/5]).
--export([replace_token_with_value/3,to_babelstat_records/1,parse_calculation/1,replace_tokens_with_values/2]).
+-export([replace_token_with_value/3,parse_calculation/1,replace_tokens_with_values/2]).
 
 
 %%%===================================================================
@@ -23,22 +23,20 @@ transpose([Single,[]]) -> Single;
 transpose([H|_]=L) -> [lists:map(F, L) || F <- [fun(A) -> lists:nth(N, A) end || N <- lists:seq(1, length(H))]].
 
 %%@doc Aggregates documents to a common timeframe (Needs optimizing)
--spec date_adjust(list(), list(), atom(), list(), string(), string()) -> list().
+-spec date_adjust(Values::[float()],Dates::[babel_date()], Frequency::frequency(), Docs::[db_result()],
+		  StartDate::babel_date(), EndDate::babel_date()) -> {Values::[float()],Dates::[babel_date()], Docs::[db_result()]}.
 date_adjust(Values, Dates, Frequency, Docs, StartDate, EndDate) ->	
     case lists:any(fun(D) -> D#babelstat.frequency =/= Frequency end,Docs) of
     	true ->	    
-    	    ParsedStart = parse_date(list_to_binary(StartDate)),
-    	    ParsedEnd = parse_date(list_to_binary(EndDate)),
     	    %%Dates need to be filtered (aggregated to the frequency)
-    	    ValidDates = date_range:create_range(ParsedStart,ParsedEnd, Frequency),
+    	    ValidDates = date_range:create_range(StartDate, EndDate, Frequency),
     	    Zipped = lists:zip3(Values,Dates,Docs),
 	    {_,MatchedList} = lists:foldl(fun(N,Acc) ->
 					   {Counter, List} = Acc,
 					   {Match,_Dont} = lists:partition(fun(P) ->
-									      {_,D,_} = P,
-									      Range = lists:sublist(ValidDates,N,N+1),
-									      Dt = parse_date(list_to_binary(D)),
-									      is_date_in_range(Range, Dt)
+										   {_,D,_} = P,
+										   Range = lists:sublist(ValidDates,N,N+1),
+										   is_date_in_range(Range, D)
 								      end,lists:sublist(Zipped,Counter+1,length(Zipped))),
 						  case length(Match) of 
 						      0-> Acc;
@@ -51,12 +49,17 @@ date_adjust(Values, Dates, Frequency, Docs, StartDate, EndDate) ->
 	    {Values,Dates,Docs}
     end.
 
-		    
+-spec convert_docs_to_series(#babelstat_query{}, #babelstat_filter{},
+			     {Values::[float()], Dates::[calendar:t_datetime1970()]}, Docs::[db_result()]) ->
+				   #babelstat_series{}.
 convert_docs_to_series(#babelstat_query{ category = Category,
 					 sub_category = Sub_Category,
 					 subject = Subject,
 					 series_category = Series_Category,
-					 title = Title } = Params, {Metric, Scale, Frequency, _, _} = Filter, {Values, Dates}, Docs) ->
+					 title = Title } = Params, 
+		       #babelstat_filter{ metric = Metric,
+					  scale = Scale,
+					  frequency = Frequency} = Filter, {Values, Dates}, Docs) ->
     {ConvertedValues,_} = lists:foldl(fun(Doc, Acc) ->
 					      {NewValues, Counter} = Acc,
 					      DocScale = Doc#babelstat.scale,
@@ -71,29 +74,33 @@ convert_docs_to_series(#babelstat_query{ category = Category,
 		      subject = Subject, series_category = Series_Category, title = Title, 
 		      legend = create_legend(Params,Filter)}.
     
-
-create_constants_series([Category, Sub_Category, Subject, Series_Category, Title] = Params, {Metric, Scale, Frequency, From, To} = Filter, Value, DocScale,DocMetric) ->
-    DateList = dates:create_range(From,To, list_to_atom(Frequency)),
+-spec create_constants_series(#babelstat_query{},
+			      #babelstat_filter{}, Value :: float(), DocScale :: integer(),
+			      DocMetric :: binary() | atom()) -> #babelstat_series{}.
+create_constants_series(#babelstat_query{ category = Category,
+					  sub_category = SubCategory,
+					  subject = Subject,
+					  series_category = SeriesCategory,
+					  title = Title } = Params,
+			#babelstat_filter{ metric = Metric,
+					   scale = Scale,
+					   frequency = Frequency,
+					   from_date = From,
+					   to_date = To} = Filter, Value, DocScale, DocMetric) ->
+    DateList = dates:create_range(From, To, Frequency),
     ConstantSeries = #babelstat_series{dates = DateList, metric = Metric, scale = Scale, frequency = Frequency,
-				      category = Category, sub_category = Sub_Category, subject = Subject,
-				      series_category = Series_Category, title = Title, 
+				      category = Category, sub_category = SubCategory, subject = Subject,
+				      series_category = SeriesCategory, title = Title, 
 				      legend = create_legend(Params,Filter)},
     Values = lists:map(fun(_Date) ->
 			       NewValue = convert_scale(DocScale, Scale, Value),
-			       convert_metric(DocMetric, Metric,NewValue)      
+			       convert_metric(DocMetric, Metric, NewValue)      
 		       end,DateList),
     ConstantSeries#babelstat_series{values = Values}.
-
-%%--------------------------------------------------------------------
-%% @doc
-%% @spec
-%% @end
-%%--------------------------------------------------------------------
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
 aggregate_docs(DocList,NewFreq) ->
     lists:foldl(fun(O,Acc) ->
 			{NoV, _,_} = Acc,
@@ -101,15 +108,19 @@ aggregate_docs(DocList,NewFreq) ->
 			{V+NoV, D,Doc#babelstat{frequency = NewFreq}}
 		end,{0.0,undefined,undefined},DocList).
 
--spec create_legend(list(),tuple()) -> string().
+
+-spec create_legend(#babelstat_query{}, #babelstat_filter{}) ->
+			   binary().
 create_legend(#babelstat_query{ category = Category,
-				sub_category = Sub_Category,
+				sub_category = SubCategory,
 				subject = Subject,
-				series_category = Series_Category,
-				title = Title }, {Metric, _, _, _, _}) ->
-    Sep = " - ",
-    "".
-    %lists:append([Category, Sep, Sub_Category, Sep, Subject, Sep, Series_Category, Sep, Title, " (",Metric,")"]).
+				series_category = SeriesCategory,
+				title = Title },
+	      #babelstat_filter{ metric = Metric }) ->
+    Sep = <<"-">>,
+    Metric0 = <<"(",Metric/binary,")">>,
+    <<Category/binary, Sep/binary, SubCategory/binary, Sep/binary, Subject/binary, Sep/binary, SeriesCategory/binary,
+      Sep/binary, Title/binary, Metric0/binary>>.
 
 %%%===================================================================
 %%% Date helper functions
@@ -133,45 +144,14 @@ is_date_in_range(Range, Date)->
 	    false
     end.
 	    
-parse_date(<<Y:4/binary,"-",M:1/binary,"-",D:1/binary>>) ->
-    {_,{H,Min,Sec}} = erlang:localtime(),
-    {
-      {list_to_integer(binary_to_list(Y)),
-       list_to_integer(binary_to_list(M)),
-       list_to_integer(binary_to_list(D))},
-       {H,Min,Sec}
-      };
-
-parse_date(<<Y:4/binary,"-",M:1/binary,"-",D:2/binary>>) ->
-    {_,{H,Min,Sec}} = erlang:localtime(),
-      {{list_to_integer(binary_to_list(Y)),
-      list_to_integer(binary_to_list(M)),
-       list_to_integer(binary_to_list(D))},
-       {H,Min,Sec}};
-
-parse_date(<<Y:4/binary,"-",M:2/binary,"-",D:2/binary>>) ->
-    {_,{H,Min,Sec}} = erlang:localtime(),
-      {{list_to_integer(binary_to_list(Y)),
-       list_to_integer(binary_to_list(M)),
-       list_to_integer(binary_to_list(D))},
-       {H,Min,Sec}};
-parse_date(<<Y:4/binary,"-",M:2/binary,"-",D:2/binary," ",H:2/binary,":",Min:2/binary,":",Sec:2/binary>>) ->
-      {{list_to_integer(binary_to_list(Y)),
-       list_to_integer(binary_to_list(M)),
-	list_to_integer(binary_to_list(D))},
-       {list_to_integer(binary_to_list(H)),
-	list_to_integer(binary_to_list(Min)),
-	list_to_integer(binary_to_list(Sec))}}.
-
-
 %%%===================================================================
 %%% Metric and scale helper functions
 %%%===================================================================
--spec convert_metric(float(),float(), float()) -> float().
+-spec convert_metric(binary(), binary(), float()) -> float().
 convert_metric(OriginalMetric, NewMetric, Value) ->
     measurements:convert(binary_to_list(OriginalMetric), binary_to_list(NewMetric), Value).
 
--spec convert_scale(float(),float(), float()) -> float().
+-spec convert_scale(integer(), integer(), float()) -> float().
 convert_scale(OriginalScale, NewScale, Value) ->
     case OriginalScale =:= NewScale of
 	true ->
@@ -188,7 +168,7 @@ convert_scale(OriginalScale, NewScale, Value) ->
 %%%===================================================================
 %%% Metric and scale helper functions
 %%%===================================================================
--spec parse_calculation(string()) -> {list(),string()}.		       
+-spec parse_calculation(binary()) -> {[#babelstat_query{}], string()}.		       
 parse_calculation(Calculation1) ->
     Calculation = binary_to_list(Calculation1),
     Tokens = string:tokens(Calculation,"()+-/*^"),
@@ -214,24 +194,23 @@ replace(Original, ToReplace, ReplaceWith) ->
     lists:append([LeftSide,ReplaceWith,RightSide]).
 
 
--spec replace_tokens_with_values(string(), [list()]) -> [string()].					
+-spec replace_tokens_with_values(Albegra::string(), List::[float()]) -> [string()].					
 replace_tokens_with_values(Algebra,List) ->
     Tokens = string:tokens(Algebra,"()+-/*^"),
     Lists1 = lists:map(fun(#babelstat_series{ values = Values}) ->
 			       Values
 		       end, List),
-    Transposed = transpose(Lists1),    
+    Transposed = transpose(Lists1),
     R = lists:map(fun(X) ->
 			  lists:foldl(fun(Y,Acc) ->
 					      {A,Counter} = Acc,
 					      Token = lists:nth(Counter,Tokens),
-					      Replaced = replace_token_with_value(A,Token,[Y]),
+					      Replaced = replace_token_with_value(A, Token, [Y]),
 					      {Replaced,Counter+1}
-				      end,{Algebra,1},X)			
+				      end,{Algebra, 1},X)			
 		  end,Transposed),
     [Result || {Result,_} <- R].
 
--spec replace_token_with_value(string(), string(), number()) -> string().				       
 replace_token_with_value(Original, ToReplace, ReplaceWith) ->
     R = case ReplaceWith of
 	X when is_float(X) ->
@@ -259,24 +238,3 @@ simplify_algebra(Tokens,Calculation) ->
 				replace(Acc,Token,Char)
 			end,Calculation,lists:seq(1,TokenCount))
     end.
-
-%%%===================================================================
-%%% Record conversion helper functions
-%%%===================================================================
-to_babelstat_records(Docs) ->
-    lists:map(fun(X) ->
-		      to_babelstat_record(X)
-	      end,Docs).
-
-to_babelstat_record({[{<<"_id">>,Id},{<<"_rev">>,Rev},{<<"date">>,Date},{<<"value">>, Value},
-		     {<<"metric">>, Metric}, {<<"scale">>, Scale}, {<<"frequency">>,Frequency},
-		     {<<"location">>,Location}, {<<"category">>,Cat}, {<<"sub_category">>,SubCat},
-		     {<<"subject">>,Subject}, {<<"series_category">>,SerCat}, {<<"title">>,Title},
-		     {<<"source">>,Source}, {<<"calculation">>,Calculation}, {<<"constant">>,Constant}]}) ->
-    #babelstat{id = Id, rev = Rev, date = binary_to_list(Date), value = Value, 
-	       metric = binary_to_list(Metric), scale = Scale, 
-	       frequency = binary_to_atom(Frequency,latin1),
-	       location = binary_to_list(Location), category = binary_to_list(Cat), 
-	       sub_category = binary_to_list(SubCat), subject = binary_to_list(Subject), 
-	       series_category = binary_to_list(SerCat), title = binary_to_list(Title), source = Source,
-	       calculation = Calculation, constant = Constant}.

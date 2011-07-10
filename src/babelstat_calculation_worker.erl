@@ -30,9 +30,9 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link(Query::[{Key::atom(), Val::binary()}],
-		 Filter::[{Key1::atom(), Val::binary()}] | [], ReportToPid::pid()) ->
-			{ok, Pid::pid()} | ignore | {error, Error::term()}.
+-spec start_link(Query::#babelstat_query{},
+		 Filter::#babelstat_filter{}, Callback::fun()) ->
+			{ok, Pid::pid()}.
 start_link(Query, Filter, Callback) ->
     gen_fsm:start_link(?MODULE, [Query, Filter, Callback], []).
 
@@ -46,8 +46,12 @@ init([SearchQuery, Filter, Callback]) ->
 	   callback = Callback,
 	   filter = Filter,
 	   search_query = SearchQuery
-	   }}.
+	  }}.
 
+-spec doing_calculation(start, #state{}) ->
+			       {stop, normal, #state{}} |
+			       {next_state, waiting_for_workers, #state{}} |
+			       {stop, error, #state{}}.
 doing_calculation(start, #state {
 		    filter = Filter,
 		    search_query = SearchQuery} = State) ->
@@ -88,8 +92,8 @@ doing_calculation(start, #state {
 	    {stop, error,  State#state{ result = {error, no_document_found} }}
     end.
 
--spec waiting_for_workers({result, Results::any} |
-			  {error, Error::any}, #state{}) ->
+-spec waiting_for_workers({result, Results::#babelstat_series{}} |
+			  {error, no_document_found}, #state{}) ->
 				 {stop, normal, #state{}} |
 				 {stop, error, #state{}} |
 				 {next_state, waiting_for_workers, #state{}}.

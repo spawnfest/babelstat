@@ -1,8 +1,8 @@
--export_type([geo/0, frequency/0, db_result/0]).
+-export_type([geo/0, frequency/0, db_result/0, babel_date/0]).
 -type geo() :: [{float(),float()}].
 -type frequency() :: seconds | minutes | hours | days | weeks | months | years.
 -type db_result() :: [{binary() , float() | integer()| atom | list()}].
-
+-type babel_date() ::  calendar:t_datetime1970().
 %%The document as it is in the database
 -record(babelstat,
 	{

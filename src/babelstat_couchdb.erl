@@ -1,6 +1,6 @@
 -module(babelstat_couchdb).
 -behaviour(gen_babelstat_db).
--include("../include/babelstat.hrl").
+-include("babelstat.hrl").
 -include_lib("couch/include/couch_db.hrl").
 -export([query_database/1,
 	 save_document/1]).
@@ -39,62 +39,74 @@ query_database(#babelstat_query{ category = Category,
 	    {ok, Results}
     end.
 
-save_document(Doc)->%% #babelstat {
-	      %% 	 constant = Constant,
-	      %% 	 date = Date,
-	      %% 	 value = Value,
-	      %% 	 metric = Metric,
-	      %% 	 scale = Scale,
-	      %% 	 frequency = Frequency,
-	      %% 	 location = Location,
-	      %% 	 category = Category,
-	      %% 	 sub_category = SubCategory,
-	      %% 	 subject = Subject,
-	      %% 	 series_category = SeriesCategory,
-	      %% 	 title = Title,
-	      %% 	 calculation = Calculation,
-	      %% 	 source = Source
-	      %% 	}) ->
-    %% Doc = {[{<<"constant">>, Constant},
-    %% 	    {<<"date">>, Date},
-    %% 	    {<<"value">>, Value},
-    %% 	    {<<"metric">>, Metric},
-    %% 	    {<<"scale">>, Scale},
-    %% 	    {<<"frequency">>, Frequency},
-    %% 	    {<<"location">>, Location},
-    %% 	    {<<"category">>, Category},
-    %% 	    {<<"sub_category">>, SubCategory},
-    %% 	    {<<"subject">>, Subject},
-    %% 	    {<<"series_category">>, SeriesCategory},
-    %% 	    {<<"title">>, Title},
-    %% 	    {<<"calculation">>, Calculation},
-    %% 	    {<<"source">>, Source}]},
-    
+-spec save_document(#babelstat{} | db_result()) ->
+		      ok | error.
+save_document(#babelstat {} = Babelstat) ->
+    save_document(babelstat_to_document(Babelstat));
+save_document(Doc) ->
     {ok, Db} = couchc:open_db(?DB_NAME),
-    couchc:save_doc(Db, Doc).
+    case couchc:save_doc(Db, Doc) of
+	{ok, _} ->
+	    ok;
+	_ ->
+	    error
+    end.
 
 %% Internal
 get_results(Row0, Acc) ->
     {Row} = Row0,
     {Doc} = proplists:get_value(doc, Row),
-    Stat = #babelstat{ id = proplists:get_value(<<"_id">>, Doc),
-		       rev = proplists:get_value(<<"_rev">>, Doc),
-		       constant = proplists:get_value(<<"contstant">>, Doc, false),
-		       date = proplists:get_value(<<"date">>, Doc),
-		       value = proplists:get_value(<<"value">>, Doc),
-		       metric = proplists:get_value(<<"metric">>, Doc),
-		       scale = proplists:get_value(<<"scale">>, Doc),
-		       frequency = to_atom(proplists:get_value(<<"frequency">>, Doc)),
-		       location = to_list(proplists:get_value(<<"location">>, Doc)),
-		       category = proplists:get_value(<<"category">>, Doc),
-		       sub_category = proplists:get_value(<<"sub_category">>, Doc),
-		       subject = proplists:get_value(<<"subject">>, Doc),
-		       series_category = proplists:get_value(<<"series_category">>, Doc),
-		       title = proplists:get_value(<<"title">>, Doc),
-		       calculation = proplists:get_value(<<"calculation">>, Doc, false),
-		       source = to_list(proplists:get_value(<<"source">>, Doc))
-		     },
+    Stat = document_to_babelstat(Doc),
     {ok, Acc ++ [Stat]}.
+
+babelstat_to_document(#babelstat { constant = Constant,
+				   date = Date,
+				   value = Value,
+				   metric = Metric,
+				   scale = Scale,
+				   frequency = Frequency,
+				   location = Location,
+				   category = Category,
+				   sub_category = SubCategory,
+				   subject = Subject,
+				   series_category = SeriesCategory,
+				   title = Title,
+				   calculation = Calculation,
+				   source = Source
+				 }) ->
+    {[{<<"constant">>, Constant},
+      {<<"date">>, Date},
+      {<<"value">>, Value},
+      {<<"metric">>, Metric},
+      {<<"scale">>, Scale},
+      {<<"frequency">>, Frequency},
+      {<<"location">>, Location},
+      {<<"category">>, Category},
+      {<<"sub_category">>, SubCategory},
+      {<<"subject">>, Subject},
+      {<<"series_category">>, SeriesCategory},
+      {<<"title">>, Title},
+      {<<"calculation">>, Calculation},
+      {<<"source">>, Source}]}.
+
+document_to_babelstat(Doc) ->
+    #babelstat{ id = proplists:get_value(<<"_id">>, Doc),
+		rev = proplists:get_value(<<"_rev">>, Doc),
+		constant = proplists:get_value(<<"contstant">>, Doc, false),
+		date = proplists:get_value(<<"date">>, Doc),
+		value = proplists:get_value(<<"value">>, Doc),
+		metric = proplists:get_value(<<"metric">>, Doc),
+		scale = proplists:get_value(<<"scale">>, Doc),
+		frequency = to_atom(proplists:get_value(<<"frequency">>, Doc)),
+		location = to_list(proplists:get_value(<<"location">>, Doc)),
+		category = proplists:get_value(<<"category">>, Doc),
+		sub_category = proplists:get_value(<<"sub_category">>, Doc),
+		subject = proplists:get_value(<<"subject">>, Doc),
+		series_category = proplists:get_value(<<"series_category">>, Doc),
+		title = proplists:get_value(<<"title">>, Doc),
+		calculation = proplists:get_value(<<"calculation">>, Doc, false),
+		source = to_list(proplists:get_value(<<"source">>, Doc))
+	      }.
 
 to_atom(Value) when is_binary(Value) ->
     list_to_atom(string:to_lower(binary_to_list(Value))).
