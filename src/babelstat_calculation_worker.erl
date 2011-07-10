@@ -100,11 +100,27 @@ doing_calculation(start, #state {
 waiting_for_workers({error, Error},  State) ->
     {stop, error, State#state{ result = {error, Error}}};
 waiting_for_workers({result, NewResults}, #state{result = Results,
-					       workers = 1,
-					       algebra = Algebra } = State) ->
+						 workers = 1,
+						 algebra = Algebra,
+						 search_query = #babelstat_query{ category = Category,
+										  subject = Subject,
+										  series_category = SeriesCategory,
+										  title = Title },
+						 filter = #babelstat_filter{ metric = Metric,
+									     scale = Scale,
+									     frequency = Frequency}
+						} = State) ->
     CalculatedResults = babel_calc:calculate(babelstat_utils:replace_tokens_with_values(Algebra, Results++[NewResults])),
-    {stop, normal, State#state{ result = {result, NewResults#babelstat_series{values = CalculatedResults}},
-			      workers = 0 }};
+    Results1 = NewResults#babelstat_series{category = Category,
+					   subject = Subject,
+					   series_category = SeriesCategory,
+					   title = Title,
+					   metric = Metric,
+					   scale = Scale,
+					   frequency = Frequency,
+					   values = CalculatedResults},
+	{stop, normal, State#state{ result = {result, Results1},
+				    workers = 0 }};
 waiting_for_workers({result, NewResult}, #state{ result = Result, 
 					       workers = Workers} = State) ->
     {next_state, waiting_for_workers, State#state{ result = Result ++ [NewResult],
