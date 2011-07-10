@@ -1,6 +1,6 @@
 -module(babelstat_couchdb).
 -behaviour(gen_babelstat_db).
--include("babelstat.hrl").
+-include("../include/babelstat.hrl").
 -include_lib("couch/include/couch_db.hrl").
 -export([query_database/2,
 	 save_document/1]).
@@ -27,23 +27,23 @@ query_database(#babelstat_query{ category = Category,
     query_database(Key, Filter);
 query_database(Key, #babelstat_filter{ from_date = undefined,
 					to_date = undefined }) ->
-    Key0 = Key ++ [{}, {}],
-    query_database(Key0);
+    StartKey = Key ++ [<<"0001-01-01 00:00:00Z">>],
+    EndKey = Key ++ [<<"9999-01-01 00:00:00Z">>],
+    query_database(StartKey, EndKey);
 query_database(Key, #babelstat_filter{ from_date = FromDate,
 				       to_date = ToDate }) when from_date =/= undefined;
 								to_date =/= undefined ->
-    Key0 = Key ++ [to_iso(FromDate), to_iso(ToDate)],
-    query_database(Key0).
+    StartKey = Key ++ [to_iso(FromDate)],
+    EndKey = Key ++ [to_iso(ToDate)],
+    query_database(StartKey, EndKey);
 
-query_database(Key) ->
+query_database(StartKey, EndKey) ->
     Options = [{query_args, #view_query_args{
-		  start_key = [Key],
-		  end_key = [Key],
+		  start_key = StartKey,
+		  end_key = EndKey,
 		  include_docs = true
 		 }}],
-    
     {ok, Db} = couchc:open_db(?DB_NAME),
-
     case couchc:fold(Db, {?DESIGN_NAME, ?VIEW_NAME}, fun get_results/2, Options) of
 	{error, {not_found, Reason}} ->
 	    error_logger:error_msg("Error querying DB: ~p", [Reason]),
@@ -71,6 +71,7 @@ save_document(Doc) ->
 get_results(Row0, Acc) ->
     {Row} = Row0,
     {Doc} = proplists:get_value(doc, Row),
+
     Stat = document_to_babelstat(Doc),
     {ok, Acc ++ [Stat]}.
 
@@ -90,7 +91,8 @@ babelstat_to_document(#babelstat { constant = Constant,
 				   source = Source,
 				   created_date = CreateDate
 				 }) ->
-    {[{<<"constant">>, Constant},
+    {[{<<"type">>, <<"babelstat">>},
+      {<<"constant">>, Constant},
       {<<"date">>, to_iso(Date)},
       {<<"value">>, Value},
       {<<"metric">>, Metric},
@@ -102,7 +104,7 @@ babelstat_to_document(#babelstat { constant = Constant,
       {<<"subject">>, Subject},
       {<<"series_category">>, SeriesCategory},
       {<<"title">>, Title},
-      {<<"calculation">>, Calculation},
+      {<<"calculation">>, check_undefined(Calculation)},
       {<<"source">>, Source},
       {<<"created_date">>, to_iso(CreateDate)}]}.
 
@@ -123,7 +125,7 @@ document_to_babelstat(Doc) ->
 		title = proplists:get_value(<<"title">>, Doc),
 		calculation = proplists:get_value(<<"calculation">>, Doc, false),
 		source = to_list(proplists:get_value(<<"source">>, Doc)),
-		created_date = to_date(proplists:get_value("created_date",Doc))
+		created_date = to_date(proplists:get_value(<<"created_date">>, Doc))
 	      }.
 
 %2011-07-10 08:59:10Z
@@ -131,7 +133,7 @@ to_date(<<Year:4/binary,_:1/binary,Month:2/binary,_:1/binary,Day:2/binary>>) ->
     {{binary_to_integer(Year), binary_to_integer(Month), binary_to_integer(Day)}, {0,0,0}};
 
 to_date(<<Year:4/binary,_:1/binary,Month:2/binary,_:1/binary,Day:2/binary,_:1/binary,Hour:2/binary,_:1/binary,Minute:2/binary, _:1/binary, Second:2/binary ,_/binary>>) ->
-    {{binary_to_integer(Year), binary_to_integer(Month), binary_to_integer(Day)}, {binary_to_integer(Hour),binary_to_integer(Minute),binary_to_integer(Second)}}.    
+    {{binary_to_integer(Year), binary_to_integer(Month), binary_to_integer(Day)}, {binary_to_integer(Hour),binary_to_integer(Minute),binary_to_integer(Second)}}.
 
 binary_to_integer(B) ->
     list_to_integer(binary_to_list(B)).
@@ -147,12 +149,16 @@ to_iso({{Year, Month, Day}, {Hour, Minute, Second}}) ->
 
 create_date_part(Date) when is_integer(Date) ->
     create_date_part(integer_to_list(Date));
-create_date_part(Date) when length(Date) =:= 4 ->
-    list_to_binary(integer_to_list(Date));
-create_date_part(Date) when length(Date) =:= 2 ->
-    Date;
+create_date_part(Date) when length(Date) =:= 4;
+			    length(Date) =:= 2 ->
+    list_to_binary(Date);
 create_date_part(Date) when length(Date) =:= 1 ->
-    string:right(Date, 2, $0).
+    list_to_binary(string:right(Date, 2, $0)).
+
+check_undefined(undefined) ->
+    null;
+check_undefined(Else) ->
+    Else.
 
 
 to_atom(Value) when is_binary(Value) ->

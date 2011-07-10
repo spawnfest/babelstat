@@ -55,10 +55,10 @@ create_docs(Category, SubCategory, Subject, SeriesCategory, Title, Source, Dates
 			  end, DatesAndValues).
     
 create_test_docs(Metric,Scale,Frequency, Title) ->
-    DateList = dates:get_range({{2000,1,1},{2011,7,10}}),
+    DateList = date_range:create_range({{2000,1,1}, {0,0,0}}, {{2011,7,10}, {0,0,0}}, binary_to_atom(Frequency, latin1)),
     
     DatesAndValues = lists:map(fun(N) ->    		      
-		      Date = lists:nth(DateList,N),
+		      Date = lists:nth(N,DateList),
 		      {Date,N*1.0}
 	      end,lists:seq(1,length(DateList))),
     create_docs(<<"Spawnfest">>,<<"Teams">>,<<"Jesus don't want me for a sunBEAM">>,<<"code">>,Title,<<"pure fiction">>, DatesAndValues, Metric,Scale,Frequency).
