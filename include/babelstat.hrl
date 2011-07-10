@@ -1,6 +1,8 @@
--export_type([geo/0, frequency/0]).
+-export_type([geo/0, frequency/0, db_result/0]).
 -type geo() :: [{float(),float()}].
 -type frequency() :: seconds | minutes | hours | days | weeks | months | years.
+-type db_result() :: [{binary() , float() | integer()| atom | list()}].
+
 %%The document as it is in the database
 -record(babelstat,
 	{
